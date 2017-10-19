@@ -6,6 +6,7 @@
 //#include <opencv2\cv.h>
 #include "opencv2/opencv.hpp"
 
+
 using namespace std;
 using namespace cv;
 //initial min and max HSV filter values.
@@ -197,7 +198,7 @@ int main(int argc, char* argv[])
 	//video capture object to acquire webcam feed
 	VideoCapture capture;
 	//open capture object at location zero (default location for webcam)
-	capture.open(0);
+	capture.open("rtmp://172.16.254.99/live/nimic");
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
@@ -212,11 +213,23 @@ int main(int argc, char* argv[])
 
 		//store image to matrix
 		capture.read(cameraFeed);
+   
+   if(cameraFeed.empty())
+   {
+     printf("nu");
+     continue;
+   }
+   
+   
 		//convert frame from BGR to HSV colorspace
 		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
 		//filter HSV image between values and store filtered image to
 		//threshold matrix
-		inRange(HSV, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+   
+   
+   //roz
+   inRange(HSV, Scalar(171, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+ 
 		//perform morphological operations on thresholded image to eliminate noise
 		//and emphasize the filtered object(s)
 		if (useMorphOps)
@@ -226,15 +239,27 @@ int main(int argc, char* argv[])
 		//filtered object
 		if (trackObjects)
 			trackFilteredObject(x, y, threshold, cameraFeed);
+      
+      // p->x si p->y  pt roz
+      
+      
+      //galben
+     inRange(HSV, Scalar(0, 172, 16), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+     if (useMorphOps)
+		  	morphOps(threshold);
+      if (trackObjects)
+			  trackFilteredObject(x, y, threshold, cameraFeed);
+      
+      // p->x si p->y  pt galben
 
 		//show frames
 		imshow(windowName2, threshold);
 		imshow(windowName, cameraFeed);
-		imshow(windowName1, HSV);
+		//imshow(windowName1, HSV);
 		setMouseCallback("Original Image", on_mouse, &p);
 		//delay 30ms so that screen can refresh.
 		//image will not appear without this waitKey() command
-		waitKey(30);
+     waitKey(30);  
 	}
 
 	return 0;
