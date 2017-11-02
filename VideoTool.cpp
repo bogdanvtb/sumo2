@@ -6,6 +6,14 @@
 //#include <opencv2\cv.h>
 #include "opencv2/opencv.hpp"
 
+// Socket
+#include <stdio.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#define PORT 20236
 
 using namespace std;
 using namespace cv;
@@ -176,9 +184,60 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed) {
 		else putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
 	}
 }
+
+// Return 0 in caz de suces , -1 la eroare .
+int transmitere_socket(char *com)
+{
+    struct sockaddr_in address;
+    int sock = 0,i;
+    struct sockaddr_in serv_addr;
+    char trans[10];
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("\n Socket creation error \n");
+        return -1;
+    }
+  
+    memset(&serv_addr, '0', sizeof(serv_addr));
+  
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+      
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if(inet_pton(AF_INET, "193.226.12.217", &serv_addr.sin_addr)<=0) 
+    {
+        printf("\nInvalid address/ Address not supported \n");
+        return -1;
+    }
+  
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        printf("\nConnection Failed \n");
+        return -1;
+    }
+
+    // Transmiterea
+    for(i=0;i<strlen(com);i++)
+	if(strchr("fbrls",com[i]))
+	{
+		sprintf(trans,"%c",com[i]);
+		send(sock , trans , strlen(trans) , 0 );
+		sleep(1);
+	}
+
+    // La final se opreste .
+    sprintf(trans,"s");
+    send(sock , trans , strlen(trans) , 0 );
+
+    return 0;
+}
+
 int main(int argc, char* argv[])
 {
 
+///////////////// Culori varianta 1
+/*
 	//some boolean variables for different functionality within this
 	//program
 	bool trackObjects = true;
@@ -261,7 +320,87 @@ int main(int argc, char* argv[])
 		//image will not appear without this waitKey() command
      waitKey(30);  
 	}
+*/
 
-	return 0;
+///////////////// Culori varianta 2
+/*
+	//some boolean variables for different functionality within this
+	//program
+	bool trackObjects = true;
+	bool useMorphOps = true;
+
+	Point p;
+	//Matrix to store each frame of the webcam feed
+	Mat cameraFeed;
+	//matrix storage for HSV image
+	Mat HSV;
+	//matrix storage for binary threshold image
+	Mat threshold;
+	//x and y values for the location of the object
+	int x = 0, y = 0;
+	//create slider bars for HSV filtering
+	createTrackbars();
+	//video capture object to acquire webcam feed
+	VideoCapture capture;
+	//open capture object at location zero (default location for webcam)
+	capture.open("rtmp://172.16.254.99/live/nimic");
+	//set height and width of capture frame
+	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
+	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+	//start an infinite loop where webcam feed is copied to cameraFeed matrix
+	//all of our operations will be performed within this loop
+
+	while (1) {
+		//store image to matrix
+		capture.read(cameraFeed);
+   
+		 if(cameraFeed.empty())
+		     continue;
+		   
+		   
+		//convert frame from BGR to HSV colorspace
+		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
+		//filter HSV image between values and store filtered image to
+		//threshold matrix
+		   
+		   
+		//roz
+   		inRange(HSV, Scalar(171, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+ 
+		//perform morphological operations on thresholded image to eliminate noise
+		//and emphasize the filtered object(s)
+		if (useMorphOps)
+			morphOps(threshold);
+		//pass in thresholded frame to our object tracking function
+		//this function will return the x and y coordinates of the
+		//filtered object
+		if (trackObjects)
+			trackFilteredObject(x, y, threshold, cameraFeed);
+      
+      		// x si y  pt roz
+
+      
+      
+      		//galben
+    		inRange(HSV, Scalar(0, 172, 16), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+
+    		 if (useMorphOps)
+		  	morphOps(threshold);
+      		if (trackObjects)
+			  trackFilteredObject(x, y, threshold, cameraFeed);
+      
+      		// x si y  pt galben
+
+     		waitKey(30);  
+	}
+*/
+
+///////////////// Sockets
+	
+    char mesaj[]="frlflf  lflflflfl";
+    transmitere_socket(mesaj);
+
+
+    return 0;
 }
 
