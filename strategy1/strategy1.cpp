@@ -147,6 +147,10 @@ void morphOps(Mat &thresh) {
 
 void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed , bool &gasit)  // MODIFICAT - in gasit punem true daca am gasit obiectul si false daca nu
 {
+	// As putea sa pun aici gasit = false , pentru a nu mai trebui sa il tot pun pe false , inainte de apelul lui trackFilteredObject
+	// gasit = false;
+	
+	
 	Mat temp;
 	threshold.copyTo(temp);
 	//these two vectors needed for output of findContours
@@ -202,31 +206,42 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed , bool &
 	gasit = objectFound;  //  MODIFICAT
 }
 
+//H S si V pentru inrange() adversar (ex : roz) 
+#define H_MIN_A 171
+#define S_MIN_A S_MIN
+#define V_MIN_A V_MIN
 
+#define H_MAX_A H_MAX
+#define S_MAX_A S_MAX
+#define V_MAX_A V_MAX
 
-//H S si V pentru inrange() adversar (galben) 
-#define H_A 0
-#define S_A 172
-#define V_A 16
+//H S si V pentru inrange() eu (ex : galben) 
+#define H_MIN_E 29
+#define S_MIN_E 11
+#define V_MIN_E 251
 
-//H S si V pentru inrange() eu (roz) 
-#define H_E 171
-#define S_E S_MIN
-#define V_E V_MIN
+#define H_MAX_E 78
+#define S_MAX_E 256
+#define V_MAX_E 256
 
-//H S si V pentru inrange() varful meu (... , de completat)  // CE CULOARE ALEG PENTRU VARFUL MEU ? ???????????????????????????????????????????????????????????????????
-#define H_V 1
-#define S_V 1
-#define V_V 1
+//H S si V pentru inrange() varful meu (ex : verde , de completat)  // CE CULOARE ALEG PENTRU VARFUL MEU ? ???????????????????????????????????????????????????????????????????
+#define H_MIN_V 78
+#define S_MIN_V 23
+#define V_MIN_V 233
+
+#define H_MAX_V 96
+#define S_MAX_V 86
+#define V_MAX_V 256
+
 
 #define MAX_PE_LOC 4 // timpul maxim cat pot sta nemiscat ( eventual sa ma rotesc ) , in secunde   -> cat ?????????????????????????????????????
 
 // -> cat ?????????????????????????????????????
-#define DURATA_MISCARE_ROTATIE 400        // cate milisescunde ma rotesc , inainte sa revin la while(1)
-#define DURATA_MISCARE_ATAC 1200          // cate milisescunde ma atac , inainte sa revin la while(1)
-#define DURATA_MISCARE_ROTATIE_IMPACT 300 // cate milisescunde ma rotesc , cand dupa un impact eu si adversarul nu ne miscam
-#define DURATA_MISCARE_ATAC_IMPACT 900    // cate milisescunde ma duc in fata sau spate , dupa ce m-am rotit in urma unui impact ,dupa care eu si adversarul nu ne miscam
-#define DURATA_STOP 100                   // cate milisecunde ma opresc daca nu gasesc adversarul
+#define DURATA_MISCARE_ROTATIE 400 *1000         // cate microsecunde ma rotesc , inainte sa revin la while(1)
+#define DURATA_MISCARE_ATAC 1200 *1000           // cate microsecunde ma atac , inainte sa revin la while(1)
+#define DURATA_MISCARE_ROTATIE_IMPACT 300 *1000  // cate microsecunde ma rotesc , cand dupa un impact eu si adversarul nu ne miscam
+#define DURATA_MISCARE_ATAC_IMPACT 900 *1000     // cate microsecunde ma duc in fata sau spate , dupa ce m-am rotit in urma unui impact ,dupa care eu si adversarul nu ne miscam
+#define DURATA_STOP 100 *1000                    // cate microsecunde ma opresc daca nu gasesc adversarul
 // Verificarile pentru rotatie ar trebui sa fie mai dese dacat cele pentru atac , daca dureaza mai putin sa ma rotesc si sa depistez adversarul , decat sa merg spre el si sa il ajung .
 // DURATA_MISCARE_ROTATIE_IMPACT probabil este mai mic decat DURATA_MISCARE_ROTATIE , deoarece cand vreau sa ma rotesc unpic , ca sa ma pot misca , rotatia va fi scurta
 
@@ -252,7 +267,7 @@ int xv,yv,xv_old,yv_old;  // coordonatele varfului meu
 
 int xmax , ymax;          // dimensiunile in pixeli ale imaginii captate de la filmare
 
-double eps = 0.8;      // double , EROAREA pentru operatii matematici -> cat ?????????????????????????????????????????????????????
+double eps = 0.8;     // double , EROAREA pentru operatii matematici -> cat ?????????????????????????????????????????????????????
 int eps_impact = 60;  // in PIXELI , EROAREA pentru a verifica daca este impact , deoarece x si y memoreaza centru robotului   -> cat ?????????????????????????????????????????????????????
 int eps_pe_loc = 30;  // in PIXELI , EROAREA pentru a verifica daca dupa inpact eu si adversarul stam pe loc -> cat ?????????????????????????????????????????????????????
 // Probabil ca eps_impact este mai mare decat eps_pe_loc , deoarece trebuie sa avem limite destul de mari pentru a verifica daca robotii sunt in impact , fiindca x si y memoreaza centru unui robot
@@ -387,6 +402,9 @@ bool stam_pe_loc()  // folosesc functia stam_pe_loc() , daca este impact , pentr
 // return 0 in caz de suces , -1 la eroare
 int transmitere_socket(char *com)
 {
+    printf("%s\n",com);  // afiseaza si pe ecran
+
+
     struct sockaddr_in address;
     int sock = 0,i;
     struct sockaddr_in serv_addr;
@@ -415,15 +433,26 @@ int transmitere_socket(char *com)
         printf("\nConnection Failed \n");
         return -1;
     }
-
-    // Transmiterea
+  
+	// Transmiterea
+	
+	// Daca stiu ca in com va fo doar un caracter
+	sprintf(trans,"%c",com[0]);
+	send(sock , trans , strlen(trans) , 0 );
+	
+	// SAU
+	// send(sock , com , strlen(com) , 0 );
+	
+	/*
+    // Daca com are mai multe caractere , mai multe comenzi
     for(i=0;i<strlen(com);i++)
 	if(strchr("fbrls",com[i]))
 	{
 		sprintf(trans,"%c",com[i]);
 		send(sock , trans , strlen(trans) , 0 );
-		//sleep(1);  // sleep(1) era pentru a astepta intre comenzi , dar eu nu folosesc sleep(1)
+		//sleep(1);  // sleep(1) era pentru a astepta intre comenzi
 	}
+	*/
 
     // La final se opreste .  // nu se mai opreste
     //sprintf(trans,"s");
@@ -435,16 +464,12 @@ int transmitere_socket(char *com)
 
 int main(int argc, char* argv[])
 {
-	// Variabile pentru testarea detectiei culorilor 
-	Point p;
-	//create slider bars for HSV filtering
-	createTrackbars();
-	// END variabile pentru testarea detectiei culorilor
-	
 	//some boolean variables for different functionality within this
 	//program
 	bool trackObjects = true;
 	bool useMorphOps = true;
+	
+	Point p;  // pentru testarea detectiei culorilor 
 	//Matrix to store each frame of the webcam feed
 	Mat cameraFeed;
 	//matrix storage for HSV image
@@ -453,13 +478,15 @@ int main(int argc, char* argv[])
 	Mat threshold;
 	//x and y values for the location of the object
 	int x = 0, y = 0;
+	//create slider bars for HSV filtering  -  pentru testarea detectiei culorilor 
+	createTrackbars();
 	//video capture object to acquire webcam feed
 	VideoCapture capture;
 	//open capture object at location zero (default location for webcam)
 	capture.open("rtmp://172.16.254.99/live/nimic");  // de unde vine FILMAREA
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
-	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+    capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
 	
 
 	
@@ -485,7 +512,9 @@ int main(int argc, char* argv[])
 	// captam o data imaginea filmata pentru a afla dimensiunile in pixeli ale imaginii : xmax si ymax
 	do 
 	{
+        printf("aflu dimensiunile\n");
 		capture.read(cameraFeed);
+		waitKey(30);  // delay pentru a citi cum trebuie imaginea
 	} while(cameraFeed.empty());
 		
 	xmax = cameraFeed.size().width;
@@ -498,52 +527,28 @@ int main(int argc, char* argv[])
 	{
 		//store image to matrix
 		capture.read(cameraFeed);
-  	 
+
   		if(cameraFeed.empty())
+		{
+			waitKey(30);  // delay pentru a citi cum trebuie imaginea
      		continue;
-   		
+		}
+		
 		//convert frame from BGR to HSV colorspace
 		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
 		
-		// Detectia adversarului
+		// Detectia
+		// Reglez H , S si V pana gasesc culoarea
 		gasit = false;  // setez pe false sa vad daca dupa trackFilteredObject() devine true
 	
-		inRange(HSV, Scalar(H_A, S_A, V_A), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+		inRange(HSV, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
 		if (useMorphOps)
 			morphOps(threshold);
 		if (trackObjects)
 			trackFilteredObject(x, y, threshold, cameraFeed, gasit);
+  
+		printf("%d\n",gasit);  // vad cat e gasit
 		
-		if(gasit == false)  // daca nu am gasit , ma intorc la while(1)
-			continue;
-			
-			
-		// Detectia mea
-		gasit = false;  // setez pe false sa vad daca dupa trackFilteredObject() devine true
-	
-		inRange(HSV, Scalar(H_E, S_E, V_E), Scalar(H_MAX, S_MAX, V_MAX), threshold);
-		if (useMorphOps)
-			morphOps(threshold);
-		if (trackObjects)
-			trackFilteredObject(x, y, threshold, cameraFeed, gasit);
-		
-		if(gasit == false)  // daca nu am gasit , ma intorc la while(1)
-			continue;	
-			
-		
-		// Detectia varfului meu
-		gasit = false;  // setez pe false sa vad daca dupa trackFilteredObject() devine true
-	
-		inRange(HSV, Scalar(H_V, S_V, V_V), Scalar(H_MAX, S_MAX, V_MAX), threshold);
-		if (useMorphOps)
-			morphOps(threshold);
-		if (trackObjects)
-			trackFilteredObject(x, y, threshold, cameraFeed, gasit);
-		
-		if(gasit == false)  // daca nu am gasit , ma intorc la while(1)
-			continue;
-			
-	
 		//show frames
 		imshow(windowName2, threshold);
 		imshow(windowName, cameraFeed);
@@ -555,6 +560,32 @@ int main(int argc, char* argv[])
 	}*/
 	// END while(1) pentru reglarea si testarea detectiei culurilor  /////////////////////////////////////////////////////////////////////
 	
+	
+	/*
+	// Verificarea functiei transmitere_socket()  -  comentez cand ruleaza stategia
+	char s_test[10];
+	
+	sprintf(s_test, "%c", RIGHT);
+	transmitere_socket(s_test);
+	sleep(1);
+	
+	sprintf(s_test, "%c", LEFT);
+	transmitere_socket(s_test);
+	sleep(1);
+	
+	sprintf(s_test, "%c", FRONT);
+	transmitere_socket(s_test);
+	sleep(1);
+	
+	sprintf(s_test, "%c", BACK);
+	transmitere_socket(s_test);
+	sleep(1);
+	
+	sprintf(s_test, "%c", STOP);
+	transmitere_socket(s_test);
+	sleep(1);
+	// END Verificarea functiei transmitere_socket()
+	*/
 	
 	
 	// STRATEGIA - WHILE(1)
@@ -569,8 +600,14 @@ int main(int argc, char* argv[])
 		capture.read(cameraFeed);
    
 		if(cameraFeed.empty())
-			continue;
+		{
+			printf("empty camera\n");
+			waitKey(30);  // delay pentru a citi cum trebuie imaginea
+			continue;     
+		}
 		
+		printf("Am citit camera\n");
+   
 		//convert frame from BGR to HSV colorspace
 		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
 		
@@ -580,7 +617,7 @@ int main(int argc, char* argv[])
 		// Detectia adversarului
 		gasit = false;  // setez pe false sa vad daca dupa trackFilteredObject() devine true
 	
-		inRange(HSV, Scalar(H_A, S_A, V_A), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+		inRange(HSV, Scalar(H_MIN_A, S_MIN_A, V_MIN_A), Scalar(H_MAX_A, S_MAX_A, V_MAX_A), threshold);
 		if (useMorphOps)
 			morphOps(threshold);
 		if (trackObjects)
@@ -591,6 +628,8 @@ int main(int argc, char* argv[])
 			sprintf(buff, "%c", STOP);
 			transmitere_socket(buff);  // buff va fi "s"
 			usleep(DURATA_STOP);
+			
+			waitKey(30);  // delay pentru a citi cum trebuie imaginea
 			continue;
 		}
 		
@@ -605,14 +644,17 @@ int main(int argc, char* argv[])
 		// Detectia mea
 		gasit = false;  // setez pe false sa vad daca dupa trackFilteredObject() devine true
 		
-		inRange(HSV, Scalar(H_E, S_E, V_E), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+		inRange(HSV, Scalar(H_MIN_E, S_MIN_E, V_MIN_E), Scalar(H_MAX_E, S_MAX_E, V_MAX_E), threshold);
 		if (useMorphOps)
 			morphOps(threshold);
 		if (trackObjects)
 			trackFilteredObject(x, y, threshold, cameraFeed, gasit);
 		
 		if(gasit == false)  // daca nu m-am gasit , ma intorc la while(1)
+		{
+			waitKey(30);  // delay pentru a citi cum trebuie imaginea
 			continue;
+		}
 		
 		// salvem vechile coordonate ale mele
 		xe_old = xe;
@@ -625,14 +667,17 @@ int main(int argc, char* argv[])
 		// Detectia varfului meu
 		gasit = false;  // setez pe false sa vad daca dupa trackFilteredObject() devine true
 		
-		inRange(HSV, Scalar(H_V, S_V, V_V), Scalar(H_MAX, S_MAX, V_MAX), threshold);
+		inRange(HSV, Scalar(H_MIN_V, S_MIN_V, V_MIN_V), Scalar(H_MAX_V, S_MAX_V, V_MAX_V), threshold);
 		if (useMorphOps)
 			morphOps(threshold);
 		if (trackObjects)
 			trackFilteredObject(x, y, threshold, cameraFeed, gasit);
 		
 		if(gasit == false)  // daca nu mi-am gasit varful , ma intorc la while(1)
+		{
+			waitKey(30);  // delay pentru a citi cum trebuie imaginea
 			continue;
+		}
 				
 		// salvem vechile coordonate ale varfului meu
 		//xv_old = xv;
@@ -671,8 +716,10 @@ int main(int argc, char* argv[])
 					
 					// miscarea in fata sau spate , dupa cum avem salvat in sens_atac
 					sprintf(buff, "%c", sens_atac);
-					transmitere_socket(buff);  // buff va fi "f" sau "b"
+					transmitere_socket(buff);  // buff va fi "f" sau "b"   
 					usleep(DURATA_MISCARE_ATAC_IMPACT);  // waitKey(DURATA_MISCARE_ATAC);
+					
+					//waitKey(30);  // nu mai e nevoie pentru ca asteapta de la usleep
 					continue;	
 				}
 			}
@@ -701,6 +748,8 @@ int main(int argc, char* argv[])
 			sprintf(buff, "%c", sens_optim_rotatie);  // pun in buff sensul optim de rotatie si ma rotesc
 			transmitere_socket(buff);  // buff va fi "r" sau "l"
 			usleep(DURATA_MISCARE_ROTATIE);  // waitKey(DURATA_MISCARE_ROTATIE);
+			
+			//waitKey(30);  // nu mai e nevoie pentru ca asteapta de la usleep
 			continue;
 		}
 		else
@@ -711,8 +760,12 @@ int main(int argc, char* argv[])
 			sprintf(buff, "%c", sens_atac);
 			transmitere_socket(buff);  // buff va fi "f" sau "b"
 			usleep(DURATA_MISCARE_ATAC);  // waitKey(DURATA_MISCARE_ATAC);
+			
+			//waitKey(30);  // nu mai e nevoie pentru ca asteapta de la usleep
 			continue;			
-		}	
+		}
+
+		waitKey(30);  // in mod normal nu ar trebui sa ajung niciodata aici , ci while(1) sa se reia mai repede
 	}
 	
 	return 0;
