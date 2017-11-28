@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+project( strategy1 )
+find_package( OpenCV REQUIRED )
+add_executable( strategy1 strategy1.cpp )
+target_link_libraries( strategy1 ${OpenCV_LIBS} )
